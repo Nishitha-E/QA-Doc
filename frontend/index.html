@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinical Scribe & Smart Prescription System</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+  <header class="app-header no-print">
+    <div class="header-left">
+      <div class="brand-logo">Rx</div>
+      <div>
+        <h1>Clinical Scribe & Smart Prescription System</h1>
+        <p class="sub-text">Multilingual Ambient OPD Scribe (Telugu, Hindi, English) & Patient History</p>
+      </div>
+    </div>
+
+    <div class="view-controls">
+      <span class="ctrl-label">Layout:</span>
+      <button class="btn-layout active" id="layoutSplitBtn" title="Equal 50/50 Split">50 / 50</button>
+      <button class="btn-layout" id="layoutWideReportBtn" title="Wide Prescription Report">Wide Report</button>
+      <button class="btn-layout" id="layoutFullReportBtn" title="Full Prescription Sheet">Full Report</button>
+    </div>
+  </header>
+
+  <div class="action-bar no-print">
+    <div class="patient-select-group">
+      <label for="patientSelectDropdown">Select Patient ID:</label>
+      <select id="patientSelectDropdown">
+        <option value="">-- Select Existing Patient ID --</option>
+      </select>
+      <button class="btn btn-primary btn-sm" id="openNewPatientModalBtn">+ New Patient ID</button>
+    </div>
+
+    <div class="doctor-setup-group">
+      <label for="doctorSelectPreset">Doctor Profile:</label>
+      <select id="doctorSelectPreset">
+        <option value="">-- Select or Type Doctor Name --</option>
+        <option value="General Physician">General Physician</option>
+        <option value="Consultant Pulmonologist">Consultant Pulmonologist</option>
+        <option value="Consultant Pediatrician">Consultant Pediatrician</option>
+        <option value="Consultant Cardiologist">Consultant Cardiologist</option>
+      </select>
+    </div>
+
+    <div class="print-actions-top">
+      <button class="btn btn-outline btn-sm" id="saveOnlyBtn">Save to Patient ID</button>
+      <button class="btn btn-print btn-sm" id="saveAndPrintBtn">Save & Print Prescription</button>
+    </div>
+  </div>
+
+  <main class="workspace-container" id="workspaceContainer">
+
+    <section class="panel-left no-print" id="panelLeft">
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>Patient Intake & History</h3>
+          <span class="badge" id="activePidBadge">No Patient Selected</span>
+        </div>
+
+        <div class="patient-info-grid">
+          <div><label>Name:</label> <strong id="infoPatientName">None</strong></div>
+          <div><label>Age/Gender:</label> <span id="infoPatientAgeGender">-</span></div>
+          <div><label>Phone:</label> <span id="infoPatientPhone">-</span></div>
+          <div><label>Blood Group:</label> <span id="infoPatientBlood">-</span></div>
+          <div class="full-span"><label>Allergies:</label> <span id="infoPatientAllergies" class="allergy-text">None</span></div>
+        </div>
+
+        <div class="history-block">
+          <div class="history-block-title">
+            <span>Previous Consultations (<b id="historyCount">0</b>)</span>
+            <button class="btn-text-link" id="startNewVisitBtn">+ Start Today's Consultation</button>
+          </div>
+          <div id="consultationHistoryList" class="history-list">
+            <div class="empty-hint">Select a patient above to view their previous consultation history.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title-row">
+          <h3>Live Consultation Audio Scribe</h3>
+          <span class="status-indicator" id="micStatusIndicator">Ready</span>
+        </div>
+
+        <div class="mic-settings-row">
+          <div class="field-col">
+            <label for="speechLangSelect">Language / Dialect:</label>
+            <select id="speechLangSelect">
+              <option value="en-IN">Indian English / Tenglish / Hinglish</option>
+              <option value="te-IN">Telugu (తెలుగు)</option>
+              <option value="hi-IN">Hindi / Dakhni (हिन्दी)</option>
+            </select>
+          </div>
+
+          <div class="field-col">
+            <label>&nbsp;</label>
+            <button class="btn btn-mic" id="toggleMicBtn">
+              <span id="micBtnText">Start Recording</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-badge">
+          <span>WebRTC Acoustic Noise Filtering: <b>Active</b></span>
+          <button class="btn-text-link" id="clearTranscriptBtn">Clear Text</button>
+        </div>
+
+        <div class="transcript-wrapper">
+          <label for="liveTranscriptArea">Live Spoken Transcript (Doctor & Patient):</label>
+          <textarea
+            id="liveTranscriptArea"
+            rows="5"
+            placeholder="Press 'Start Recording' and speak freely in Telugu, Hindi, or English...&#10;Or type/paste any doctor-patient dialogue here."
+          ></textarea>
+          <div id="interimTranscriptBar" class="interim-text"></div>
+        </div>
+
+        <div class="sample-pills-row">
+          <span class="sample-label">Role-Play Test Samples:</span>
+          <button class="btn-pill" data-sample="telugu">Telugu (Fever & Cold)</button>
+          <button class="btn-pill" data-sample="hindi">Hindi (Acidity & Vertigo)</button>
+          <button class="btn-pill" data-sample="english">English (Chest Infection)</button>
+        </div>
+
+        <button class="btn btn-extract" id="extractPrescriptionBtn">
+          Auto-Extract & Fill Prescription Template
+        </button>
+      </div>
+
+    </section>
+
+    <div class="resizer-bar no-print" id="resizerBar" title="Drag left or right to adjust layout width"></div>
+
+    <section class="panel-right" id="panelRight">
+
+      <div class="prescription-paper" id="printablePrescription">
+
+        <div class="rx-header">
+          <div class="clinic-details">
+            <input
+              type="text"
+              class="editable-input clinic-title"
+              id="clinicNameInput"
+              placeholder="Enter Hospital / Clinic Name"
+              value=""
+            />
+            <input
+              type="text"
+              class="editable-input clinic-sub"
+              id="clinicAddressInput"
+              placeholder="Clinic Address / Contact Details"
+              value=""
+            />
+          </div>
+          <div class="doctor-details">
+            <input
+              type="text"
+              class="editable-input doc-title"
+              id="doctorNameInput"
+              placeholder="Dr. [Enter Doctor Name], M.D."
+              value=""
+            />
+            <input
+              type="text"
+              class="editable-input doc-sub"
+              id="doctorRegInput"
+              placeholder="Reg. No / Specialty"
+              value=""
+            />
+          </div>
+        </div>
+
+        <div class="patient-metadata-bar">
+          <div class="meta-item">
+            <label>Patient ID:</label>
+            <strong id="sheetPatientId" class="pid-text">Select Patient</strong>
+          </div>
+          <div class="meta-item">
+            <label>Name:</label>
+            <input type="text" id="sheetPatientName" placeholder="Patient Name" />
+          </div>
+          <div class="meta-item">
+            <label>Age / Sex:</label>
+            <input type="text" id="sheetPatientAgeSex" class="short-input" placeholder="Age / Sex" />
+          </div>
+          <div class="meta-item">
+            <label>Phone:</label>
+            <input type="tel" id="sheetPatientPhone" class="medium-input" placeholder="10-digit mobile" maxlength="10" />
+          </div>
+          <div class="meta-item">
+            <label>Date:</label>
+            <input type="text" id="sheetVisitDate" class="medium-input" />
+          </div>
+        </div>
+
+        <div class="vitals-row">
+          <div class="vital-cell">
+            <label>BP:</label>
+            <input type="text" id="vitalBp" placeholder="120/80 mmHg" />
+          </div>
+          <div class="vital-cell">
+            <label>Pulse:</label>
+            <input type="text" id="vitalPulse" placeholder="78 bpm" />
+          </div>
+          <div class="vital-cell">
+            <label>Temp:</label>
+            <input type="text" id="vitalTemp" placeholder="98.6 °F" />
+          </div>
+          <div class="vital-cell">
+            <label>Weight:</label>
+            <input type="text" id="vitalWeight" placeholder="kg" />
+          </div>
+        </div>
+
+        <div class="clinical-findings-row">
+          <div class="clinical-col">
+            <div class="label-with-dropdown">
+              <label>Chief Complaints & Duration (C/O):</label>
+              <select id="quickComplaintDropdown" class="no-print quick-select">
+                <option value="">+ Add Common Symptom</option>
+                <option value="Fever">Fever</option>
+                <option value="Headache">Headache</option>
+                <option value="Body Pains">Body Pains</option>
+                <option value="Cough">Cough</option>
+                <option value="Cold & Running Nose">Cold & Running Nose</option>
+                <option value="Throat Pain">Throat Pain</option>
+                <option value="Acidity / Gas">Acidity / Burning Sensation</option>
+                <option value="Stomach Pain">Stomach Pain</option>
+                <option value="Vomiting">Vomiting</option>
+                <option value="Dizziness (Chakkar)">Dizziness / Vertigo</option>
+                <option value="Loose Motions">Loose Motions</option>
+                <option value="Weakness">General Weakness</option>
+              </select>
+              <select id="quickDurationDropdown" class="no-print quick-select">
+                <option value="">+ Duration</option>
+                <option value="1 Day">1 Day</option>
+                <option value="2 Days">2 Days</option>
+                <option value="3 Days">3 Days</option>
+                <option value="5 Days">5 Days</option>
+                <option value="1 Week">1 Week</option>
+                <option value="2 Weeks">2 Weeks</option>
+              </select>
+            </div>
+            <textarea id="sheetComplaints" rows="2" placeholder="Complaints extracted from voice or selected from dropdown..."></textarea>
+          </div>
+
+          <div class="clinical-col">
+            <div class="label-with-dropdown">
+              <label>Provisional Diagnosis (Dx):</label>
+              <select id="quickDiagnosisDropdown" class="no-print quick-select">
+                <option value="">+ Select Common Diagnosis</option>
+                <option value="Acute Viral Fever">Acute Viral Fever</option>
+                <option value="Viral Upper Respiratory Tract Infection (URTI)">Viral Upper Respiratory Infection</option>
+                <option value="Acute Gastritis / Acid Peptic Disease">Acute Gastritis / Acidity</option>
+                <option value="Benign Positional Vertigo">Benign Positional Vertigo</option>
+                <option value="Acute Gastroenteritis">Acute Gastroenteritis</option>
+                <option value="Essential Hypertension">Essential Hypertension</option>
+                <option value="Type 2 Diabetes Mellitus">Type 2 Diabetes Mellitus</option>
+                <option value="Allergic Rhinitis / Pharyngitis">Allergic Rhinitis / Pharyngitis</option>
+                <option value="Migraine">Migraine Headache</option>
+              </select>
+            </div>
+            <textarea id="sheetDiagnosis" rows="2" placeholder="Diagnosis extracted from voice or selected from dropdown..."></textarea>
+          </div>
+        </div>
+
+        <div class="medications-block">
+          <div class="rx-title-bar">
+            <div class="rx-symbol">Rx</div>
+            <div class="rx-title-text">Prescribed Medications (Instructions in Telugu & Hindi)</div>
+            <button class="btn btn-outline btn-xs no-print" id="addMedicineRowBtn">+ Add Medicine</button>
+          </div>
+
+          <datalist id="medicineDatalist">
+            <option value="Tab. Dolo 650mg"></option>
+            <option value="Cap. Pantocid DSR"></option>
+            <option value="Tab. Pan 40mg"></option>
+            <option value="Tab. Azithral 500mg"></option>
+            <option value="Tab. Augmentin 625mg"></option>
+            <option value="Tab. Mahacef 200mg"></option>
+            <option value="Tab. Cetirizine 10mg"></option>
+            <option value="Tab. Montair LC"></option>
+            <option value="Tab. Allegra 120mg"></option>
+            <option value="Tab. Zerodol-SP"></option>
+            <option value="Tab. Telma 40mg"></option>
+            <option value="Tab. Glycomet 500mg"></option>
+            <option value="Tab. Vertin 16mg"></option>
+            <option value="Tab. Ondem 4mg"></option>
+            <option value="Syp. Sucrafil O Gel (10ml)"></option>
+            <option value="Syp. Ascoril LS (10ml)"></option>
+            <option value="Tab. Zincovit"></option>
+            <option value="Tab. Shelcal 500mg"></option>
+            <option value="Sachet ORS Electral"></option>
+          </datalist>
+
+          <table class="rx-table">
+            <thead>
+              <tr>
+                <th style="width: 4%;">#</th>
+                <th style="width: 33%;">Medicine Name & Type</th>
+                <th style="width: 32%;">
+                  Dosage Schedule (Doctor Visual & Code)<br />
+                  <small>Morning --- Afternoon --- Night</small>
+                </th>
+                <th style="width: 17%;">Food Timing</th>
+                <th style="width: 10%;">Duration</th>
+                <th class="no-print" style="width: 4%;"></th>
+              </tr>
+            </thead>
+            <tbody id="rxTableBody">
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="bottom-fields-block">
+          <div class="bottom-field-row">
+            <div class="field-label-group">
+              <label>Investigations / Lab Tests Advised:</label>
+              <select id="quickInvestigationDropdown" class="no-print quick-select">
+                <option value="">+ Common Lab Test</option>
+                <option value="CBP (Complete Blood Picture)">CBP (Complete Blood Picture)</option>
+                <option value="RBS (Random Blood Sugar)">RBS (Random Blood Sugar)</option>
+                <option value="Dengue NS1 & IgM">Dengue NS1 & IgM</option>
+                <option value="Lipid Profile">Lipid Profile</option>
+                <option value="Serum Creatinine">Serum Creatinine</option>
+                <option value="Chest X-Ray (PA View)">Chest X-Ray (PA View)</option>
+                <option value="ECG">ECG</option>
+                <option value="Urine Routine Examination">Urine Routine</option>
+                <option value="Thyroid Profile (T3, T4, TSH)">Thyroid Profile</option>
+              </select>
+            </div>
+            <input type="text" id="sheetInvestigations" placeholder="e.g. CBP if symptoms persist" />
+          </div>
+
+          <div class="bottom-field-row">
+            <div class="field-label-group">
+              <label>Follow-Up Review Date:</label>
+              <select id="quickFollowUpDropdown" class="no-print quick-select">
+                <option value="">Select Follow-up Review</option>
+                <option value="Review after 2 Days">After 2 Days</option>
+                <option value="Review after 3 Days">After 3 Days</option>
+                <option value="Review after 5 Days">After 5 Days</option>
+                <option value="Review after 1 Week">After 1 Week</option>
+                <option value="Review after 15 Days">After 15 Days</option>
+                <option value="Review after 1 Month">After 1 Month</option>
+                <option value="SOS (Review only if symptoms persist or worsen)">SOS (If needed)</option>
+              </select>
+            </div>
+            <input type="text" id="sheetFollowUp" placeholder="Review timeline" />
+          </div>
+        </div>
+
+        <div class="rx-footer">
+          <div class="footer-notice">
+            <p><strong>Note:</strong> Report immediately if high-grade fever, breathlessness, or persistent vomiting occurs.</p>
+            <p class="meta-text">Generated via Clinical Ambient Scribe - Verified by Doctor</p>
+          </div>
+          <div class="doctor-signature-box">
+            <div class="sig-space"></div>
+            <div class="sig-line">Doctor's Signature & Stamp</div>
+            <div class="sig-name" id="footerDocNameDisplay"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <div class="modal-backdrop no-print" id="newPatientModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Register New Patient (Auto-Assign Unique ID)</h3>
+        <button class="modal-close" id="closeNewPatientModalBtn">&times;</button>
+      </div>
+      <form id="newPatientForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unique Patient ID</label>
+            <input type="text" id="newPidInput" readonly class="readonly-input" />
+          </div>
+          <div class="form-group">
+            <label>Phone Number *</label>
+            <input type="tel" id="newPhoneInput" placeholder="10-digit mobile" maxlength="10" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Full Patient Name *</label>
+          <input type="text" id="newNameInput" placeholder="Enter patient name" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Age (Years) *</label>
+            <input type="number" id="newAgeInput" value="30" min="1" max="120" required />
+          </div>
+          <div class="form-group">
+            <label>Gender *</label>
+            <select id="newGenderInput">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Blood Group</label>
+            <select id="newBloodInput">
+              <option value="">Select</option>
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Known Allergies</label>
+          <input type="text" id="newAllergiesInput" placeholder="None or enter drug allergies" value="None" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelNewPatientBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Patient ID & Start Visit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastNotification" class="toast no-print"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
