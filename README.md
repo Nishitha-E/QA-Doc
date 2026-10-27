@@ -24,6 +24,8 @@ QA-Doc/
 │   ├── index.html           # Doctor dashboard & prescription sheet layout
 │   ├── styles.css           # Responsive styles & dedicated @media print rules
 │   └── app.js               # Audio streaming, UI handlers & validation
+├── demo_output/
+│   └── sample_case_prescription.pdf  # Sample clinical prescription output PDF
 ├── requirements.txt         # Python dependencies
 └── .gitignore
 ```
